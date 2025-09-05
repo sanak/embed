@@ -5,10 +5,10 @@ name: build
 
 on:
   push:
-    branches: [master, 'v[0-9]+']
+    branches: [master,next,'v[0-9]+']
     tags: ['v*']
   pull_request:
-    branches: ['v[0-9]+']
+    branches: [next,'v[0-9]+']
 
 jobs:
   build:
@@ -89,11 +89,11 @@ jobs:
           # タグからバージョンを抽出 (例: refs/tags/v1.2.3 -> 1.2.3)
           VERSION=${GITHUB_REF#refs/tags/v}
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          
+
           # メジャーバージョンを抽出 (例: 1.2.3 -> 1)
           MAJOR_VERSION=$(echo $VERSION | cut -d. -f1)
           echo "major_version=$MAJOR_VERSION" >> $GITHUB_OUTPUT
-          
+
           # プレリリースかどうかをチェック
           if [[ $VERSION == *"-"* ]]; then
             echo "is_prerelease=true" >> $GITHUB_OUTPUT
@@ -123,10 +123,10 @@ jobs:
       - name: 'Setup CDN deployment directories'
         run: |
           cd ./cdn.geolonia.com
-          
+
           # メジャーバージョン用ディレクトリ (例: /v1/embed)
           mkdir -p public/v${{ steps.version.outputs.major_version }}/embed
-          
+
           # 完全バージョン用ディレクトリ (例: /v1.2.3/embed)
           mkdir -p public/v${{ steps.version.outputs.version }}/embed
       - name: 'Build Embed API'
@@ -135,17 +135,17 @@ jobs:
       - name: 'Deploy to CDN paths'
         run: |
           cd ./cdn.geolonia.com
-          
+
           # メジャーバージョン用ディレクトリをクリア (例: /v1/embed)
           rm -rf public/v${{ steps.version.outputs.major_version }}/embed/*
-          
+
           # ビルドされたファイルを両方のパスにコピー
           # メジャーバージョン用 (例: /v1/embed)
           cp -r dist/embed/* public/v${{ steps.version.outputs.major_version }}/embed/
-          
+
           # 完全バージョン用 (例: /v1.2.3/embed)
           cp -r dist/embed/* public/v${{ steps.version.outputs.version }}/embed/
-          
+
           # Git設定とコミット
           git config user.name "$GITHUB_ACTOR"
           git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
@@ -159,11 +159,11 @@ jobs:
           title: "Release @geolonia/embed v${{ steps.version.outputs.version }}"
           body: |
             Release @geolonia/embed v${{ steps.version.outputs.version }}
-            
+
             **デプロイ先:**
             - `/v${{ steps.version.outputs.major_version }}/embed/` (メジャーバージョン)
             - `/v${{ steps.version.outputs.version }}/embed/` (完全バージョン)
-            
+
             https://github.com/geolonia/embed の GitHub Actions によって自動作成
           labels: 🚀♻️リリース定期タスク
           branch: release/embed-v${{ steps.version.outputs.version }}
