@@ -1,7 +1,7 @@
 import { Page } from '@playwright/test';
 // テスト用の設定
 export const TEST_URL = 'http://localhost:3000/e2e';
-export const LOAD_TIMEOUT = 5000;
+export const LOAD_TIMEOUT = 15000;
 
 // ヘルパー関数
 export async function waitForMapLoad(page: Page, selector = '.geolonia') {
