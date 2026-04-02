@@ -80,9 +80,6 @@ typings/
 .cache
 .DS_Store
 
-# Automatically generated version.ts
-/src/version.ts
-
 # Playwright
 /test-results/
 /playwright-report/
