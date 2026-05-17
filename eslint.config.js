@@ -223,9 +223,11 @@ module.exports = defineConfig([{
         "**/*.spec.ts",
         "**/*.spec.jsx",
         "**/*.spec.tsx",
+        "e2e/**",
     ],
 
     rules: {
+        "no-console": "off",
         "no-import-assign": "off",
         "import/no-extraneous-dependencies": "off",
     },
