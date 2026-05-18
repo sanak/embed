@@ -30,10 +30,6 @@ export default defineConfig({
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
-    /* Capture screenshots on failure so artifact viewers can inspect rendered state. */
-    screenshot: 'only-on-failure',
-    /* Save video on failure to help diagnose timing-sensitive issues. */
-    video: 'retain-on-failure',
   },
 
   /*
@@ -44,18 +40,7 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: {
-        ...devices['Desktop Chrome'],
-        launchOptions: {
-          args: [
-            '--enable-webgl',
-            '--use-gl=angle',
-            '--use-angle=metal',
-            '--ignore-gpu-blocklist',
-            '--disable-features=VulkanSwiftShader',
-          ],
-        },
-      },
+      use: { ...devices['Desktop Chrome'] },
     },
   ],
 
