@@ -54,15 +54,29 @@ test.describe('1. 基本的な地図表示', () => {
     expect(consoleErrors).toHaveLength(0);
   });
 
-  test('1.4 アトリビューションが表示されていること', async ({ page }) => {
+  test('1.4 アトリビューションが表示されていること', async ({ page }, testInfo) => {
+    // CI とローカルの両方でレスポンスを観測できるようにしておく。
+    // 失敗時のみ artifact に添付する。
+    const networkLog: { url: string; status: number }[] = [];
+    page.on('response', (resp) => {
+      const url = resp.url();
+      if (/cdn\.geolonia\.com|tiles\.geolonia\.com|api\.geolonia\.com|tileserver/.test(url)) {
+        networkLog.push({ url, status: resp.status() });
+      }
+    });
+
     await page.goto(`${TEST_URL}/basic.html`);
     await waitForMapLoad(page);
 
-    // CustomAttributionControl は Shadow DOM 内にアトリビューションを描画する
-    const attributionText = await page.evaluate(() => {
-      const containers = document.querySelectorAll('.geolonia .maplibregl-control-container .maplibregl-ctrl-bottom-right > div');
+    // attribution は style/tileJSON が両方ロードされて初めて埋まる。
+    // waitForMapLoad は canvas の出現しか保証しないので、
+    // 実際に attribution が反映されるまで一定時間待つ。
+    const readAttribution = () => {
+      const containers = document.querySelectorAll(
+        '.geolonia .maplibregl-control-container .maplibregl-ctrl-bottom-right > div',
+      );
       for (const container of containers) {
-        const shadow = container.shadowRoot;
+        const shadow = (container as HTMLElement).shadowRoot;
         if (shadow) {
           const inner = shadow.querySelector('.maplibregl-ctrl-attrib-inner');
           if (inner) {
@@ -71,7 +85,45 @@ test.describe('1. 基本的な地図表示', () => {
         }
       }
       return null;
-    });
+    };
+
+    let attributionText: string | null = null;
+    try {
+      await page.waitForFunction(
+        () => {
+          const containers = document.querySelectorAll(
+            '.geolonia .maplibregl-control-container .maplibregl-ctrl-bottom-right > div',
+          );
+          for (const container of containers) {
+            const shadow = (container as HTMLElement).shadowRoot;
+            if (shadow) {
+              const inner = shadow.querySelector('.maplibregl-ctrl-attrib-inner');
+              if (inner && inner.innerHTML.trim() !== '') return true;
+            }
+          }
+          return false;
+        },
+        undefined,
+        { timeout: 10_000 },
+      );
+      attributionText = await page.evaluate(readAttribution);
+    } catch {
+      // タイムアウト時は失敗扱いだが、診断情報を残してから assert に進む。
+      attributionText = await page.evaluate(readAttribution);
+    }
+
+    // 失敗時に CI の artifact から原因を追えるよう、何があっても画面と
+    // 関連ネットワーク状況を保存しておく。
+    if (!attributionText) {
+      await testInfo.attach('network-log.json', {
+        body: JSON.stringify(networkLog, null, 2),
+        contentType: 'application/json',
+      });
+      await page.screenshot({
+        path: testInfo.outputPath('attribution-empty.png'),
+        fullPage: true,
+      });
+    }
 
     expect(attributionText).not.toBeNull();
     expect(attributionText).not.toBe('');
