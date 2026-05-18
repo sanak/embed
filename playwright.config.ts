@@ -43,7 +43,13 @@ export default defineConfig({
       use: {
         ...devices['Desktop Chrome'],
         launchOptions: {
-          args: ['--use-gl=angle', '--use-angle=swiftshader'],
+          args: [
+            '--enable-webgl',
+            '--use-gl=angle',
+            '--use-angle=metal',
+            '--ignore-gpu-blocklist',
+            '--disable-features=VulkanSwiftShader'
+          ],
         },
       },
     },

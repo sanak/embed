@@ -227,7 +227,6 @@ module.exports = defineConfig([{
     ],
 
     rules: {
-        "no-console": "off",
         "no-import-assign": "off",
         "import/no-extraneous-dependencies": "off",
     },
