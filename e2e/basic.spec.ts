@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { Geolonia } from '../src/embed';
-import { TEST_URL, waitForMapLoad } from './helper';
+import { TEST_URL, waitForMapLoad, waitForStyleLoad } from './helper';
 
 declare global {
   interface Window {
@@ -67,11 +67,13 @@ test.describe('1. 基本的な地図表示', () => {
 
     await page.goto(`${TEST_URL}/basic.html`);
     await waitForMapLoad(page);
+    // attribution は style/TileJSON が両方ロードされて初めて埋まる。
+    // map.loaded() は内部で各 source の loaded() を呼ぶため、ベクタソースの
+    // TileJSON 取得完了まで待ってくれる。
+    await waitForStyleLoad(page);
 
-    // attribution は style/tileJSON が両方ロードされて初めて埋まる。
-    // waitForMapLoad は canvas の出現しか保証しないので、
-    // 実際に attribution が反映されるまで一定時間待つ。
-    const readAttribution = () => {
+    // CustomAttributionControl は Shadow DOM 内にアトリビューションを描画する
+    const attributionText = await page.evaluate(() => {
       const containers = document.querySelectorAll(
         '.geolonia .maplibregl-control-container .maplibregl-ctrl-bottom-right > div',
       );
@@ -85,43 +87,15 @@ test.describe('1. 基本的な地図表示', () => {
         }
       }
       return null;
-    };
+    });
 
-    let attributionText: string | null = null;
-    try {
-      await page.waitForFunction(
-        () => {
-          const containers = document.querySelectorAll(
-            '.geolonia .maplibregl-control-container .maplibregl-ctrl-bottom-right > div',
-          );
-          for (const container of containers) {
-            const shadow = (container as HTMLElement).shadowRoot;
-            if (shadow) {
-              const inner = shadow.querySelector('.maplibregl-ctrl-attrib-inner');
-              if (inner && inner.innerHTML.trim() !== '') return true;
-            }
-          }
-          return false;
-        },
-        undefined,
-        { timeout: 10_000 },
-      );
-      attributionText = await page.evaluate(readAttribution);
-    } catch {
-      // タイムアウト時は失敗扱いだが、診断情報を残してから assert に進む。
-      attributionText = await page.evaluate(readAttribution);
-    }
-
-    // 失敗時に CI の artifact から原因を追えるよう、何があっても画面と
-    // 関連ネットワーク状況を保存しておく。
+    // 失敗した時に CI の artifact から原因を追えるよう、関連ネットワーク状況を
+    // 残す。スクリーンショット自体は playwright.config.ts の
+    // screenshot: 'only-on-failure' が自動で保存する。
     if (!attributionText) {
       await testInfo.attach('network-log.json', {
         body: JSON.stringify(networkLog, null, 2),
         contentType: 'application/json',
-      });
-      await page.screenshot({
-        path: testInfo.outputPath('attribution-empty.png'),
-        fullPage: true,
       });
     }
 
