@@ -48,7 +48,7 @@ export default defineConfig({
             '--use-gl=angle',
             '--use-angle=metal',
             '--ignore-gpu-blocklist',
-            '--disable-features=VulkanSwiftShader'
+            '--disable-features=VulkanSwiftShader',
           ],
         },
       },
