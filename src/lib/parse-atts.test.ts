@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { keyring } from '@geolonia/maps-core';
+import { keyring, getStyle } from '@geolonia/maps-core';
 import parseAtts, { attsToOptions } from './parse-atts';
 
 /**
@@ -157,5 +157,66 @@ describe('attsToOptions', () => {
     expect(options.customMarkerOffset).toEqual([10, -5]);
     expect(options.minZoom).toBe(3);
     expect(options.maxZoom).toBe(18);
+  });
+});
+
+// data-lang の言語解決 (embed#462 / maps-core#50)。
+// 正しい契約 (maps-core#50 のテストが基準):
+//   - `ja` / `ja-jp` のみ日本語スタイル、それ以外は英語スタイル
+//   - `auto` はブラウザ言語に追従
+// embed の責務: `data-lang` を options.lang へ転送する (最終的な ja/en 判定は
+// maps-core の getStyle が担う)。未指定時のみ embed が getLang() で具体値に解決する。
+describe('data-lang 言語解決', () => {
+  beforeEach(() => {
+    keyring.reset();
+    keyring.setApiKey('KEY');
+  });
+  afterEach(() => keyring.reset());
+
+  const setNav = (langs: string[]) =>
+    Object.defineProperty(window.navigator, 'languages', {
+      value: langs,
+      configurable: true,
+    });
+
+  const optionsFor = (dataLang: string | undefined, navLangs: string[]) => {
+    setNav(navLangs);
+    const c = document.createElement('div');
+    if (dataLang !== undefined) c.dataset.lang = dataLang;
+    return attsToOptions(c, parseAtts(c));
+  };
+
+  it('data-lang="en" は browser が ja でも英語スタイルになる (ja にならない)', () => {
+    const opts = optionsFor('en', ['ja']);
+    expect(opts.lang).toBe('en');
+    expect(getStyle('geolonia/basic-v2', { lang: 'en', apiKey: 'KEY' })).toContain(
+      '/en.json',
+    );
+  });
+
+  it('data-lang="ja" は browser が en でも日本語スタイルになる', () => {
+    const opts = optionsFor('ja', ['en']);
+    expect(opts.lang).toBe('ja');
+    expect(getStyle('geolonia/basic-v2', { lang: 'ja', apiKey: 'KEY' })).toContain(
+      '/ja.json',
+    );
+  });
+
+  it('data-lang="ja-jp" は日本語スタイルになる (maps-core#50)', () => {
+    const opts = optionsFor('ja-jp', ['en']);
+    expect(opts.lang).toBe('ja-jp');
+    expect(
+      getStyle('geolonia/basic-v2', { lang: 'ja-jp', apiKey: 'KEY' }),
+    ).toContain('/ja.json');
+  });
+
+  it('data-lang 未指定はブラウザ言語に追従する', () => {
+    expect(optionsFor(undefined, ['en']).lang).toBe('en');
+    expect(optionsFor(undefined, ['ja']).lang).toBe('ja');
+  });
+
+  it('data-lang="auto" は maps-core へ委譲される (auto のまま転送)', () => {
+    expect(optionsFor('auto', ['en']).lang).toBe('auto');
+    expect(optionsFor('auto', ['ja']).lang).toBe('auto');
   });
 });
