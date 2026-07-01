@@ -42,10 +42,16 @@ export const renderGeoloniaMap = () => {
     const renderSingleMap = (target) => {
       const atts = parseAtts(target);
 
-      // Grab inline popup content before maps-core clears/renders the container.
-      extractPopupContent(target);
-
-      const map = new GeoloniaMap(attsToOptions(target, atts));
+      // Dedup: if this container was already initialised (e.g. constructed
+      // programmatically before the lazy observer fired), reuse the instance.
+      // Must happen before extractPopupContent(), otherwise we'd wipe the
+      // already-rendered map DOM out of the container.
+      let map = target.geoloniaMap;
+      if (!map) {
+        // Grab inline popup content before maps-core clears/renders the container.
+        extractPopupContent(target);
+        map = new GeoloniaMap(attsToOptions(target, atts));
+      }
 
       // detect if the map removed manually
       map.on('remove', () => {

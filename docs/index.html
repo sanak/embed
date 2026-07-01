@@ -131,8 +131,8 @@
       data-lng="139.767125"
       data-zoom="9"
     ></div>
-    <pre>var map = new geolonia.Map('my-map');
-setInterval(function() { myMap.rotateTo( myMap.getBearing() + 90 ) }, 5000);</pre>
+    <pre>var map = new geolonia.Map({ container: 'my-map' });
+setInterval(function() { map.rotateTo( map.getBearing() + 90 ) }, 5000);</pre>
   </div>
 
   <div class="example">
@@ -409,7 +409,7 @@ setInterval(function() { myMap.rotateTo( myMap.getBearing() + 90 ) }, 5000);</pr
 
   <script src="./embed?geolonia-api-key=YOUR-API-KEY"></script>
   <script>
-    var myMap = new geolonia.Map('my-map');
+    var myMap = new geolonia.Map({ container: 'my-map', center: [139.767125, 35.681236], zoom: 9 });
     setInterval(function() { myMap.rotateTo( myMap.getBearing() + 90 ) }, 5000);
   </script>
 </body>

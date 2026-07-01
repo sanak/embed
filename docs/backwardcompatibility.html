@@ -37,7 +37,7 @@
       data-marker="off"
     ></div>
     <pre>
-      var map1 = new geolonia.Map('my-map1');
+      var map1 = new geolonia.Map({ container: 'my-map1', center: [139.767125, 35.681236], zoom: 9, marker: false });
       map1.on('load', async () => {
           image = await map1.loadImage('https://upload.wikimedia.org/wikipedia/commons/7/7c/201408_cat.png');
           map1.addImage('cat', image.data);
@@ -80,7 +80,7 @@
       data-marker="off"
     ></div>
     <pre>
-      var map2 = new geolonia.Map('my-map2');
+      var map2 = new geolonia.Map({ container: 'my-map2', center: [139.767125, 35.681236], zoom: 9, marker: false });
       map2.on('load', () => {
         map2.loadImage(
             'https://upload.wikimedia.org/wikipedia/commons/7/7c/201408_cat.png',
@@ -136,7 +136,7 @@
 
   <script src="./embed?geolonia-api-key=YOUR-API-KEY"></script>
   <script>
-    var map1 = new geolonia.Map('my-map1');
+    var map1 = new geolonia.Map({ container: 'my-map1', center: [139.767125, 35.681236], zoom: 9, marker: false });
     map1.on('load', async () => {
           image = await map1.loadImage('https://upload.wikimedia.org/wikipedia/commons/7/7c/201408_cat.png');
           map1.addImage('cat', image.data);
@@ -166,7 +166,7 @@
           });
       });
 
-      var map2 = new geolonia.Map('my-map2');
+      var map2 = new geolonia.Map({ container: 'my-map2', center: [139.767125, 35.681236], zoom: 9, marker: false });
       map2.on('load', () => {
         map2.loadImage(
             'https://upload.wikimedia.org/wikipedia/commons/7/7c/201408_cat.png',

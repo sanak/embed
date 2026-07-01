@@ -24,7 +24,12 @@
   </div>
   <script src="./embed?geolonia-api-key=YOUR-API-KEY"></script>
   <script>
-    const map = new geolonia.Map('#my-map');
+    const map = new geolonia.Map({
+      container: '#my-map',
+      center: [138.374, 35.977],
+      zoom: 6,
+      marker: false,
+    });
     // git@github.com:geolonia/sandbox-s3-pmtiles.git
     // See the Sandbox AWS Account
     const pmtiles_url = 'https://d34j6iplycp4rd.cloudfront.net/hello.pmtiles'
