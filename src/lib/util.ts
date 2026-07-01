@@ -1,54 +1,55 @@
 'use strict';
 
-import { keyring } from './keyring';
-import type {
-  GetResourceResponse,
-  MapOptions,
-  MarkerOptions,
-  ExpiryData,
-} from 'maplibre-gl';
-
-// GetImageCallback extracted from maplibre-gl v3.6.2 ( https://github.com/maplibre/maplibre-gl-js/releases/tag/v3.6.2 )
-export type GetImageCallback = (
-  error?: Error | null,
-  image?: HTMLImageElement | ImageBitmap | null,
-  expiry?: ExpiryData | null,
-) => void;
+import { keyring } from '@geolonia/maps-core';
 
 /**
+ * Parse the Geolonia API key from the `?geolonia-api-key=` query of the
+ * embed `<script>` tag (backward compatibility).
  *
- * @param {string} str target URL string
- * @return {string|false} Resolved URL or false if not resolved
+ * maps-core's keyring no longer scans the DOM, so this embed-specific
+ * helper reads the script tag and returns the key/stage for the caller to
+ * push into the keyring via `setApiKey()` / `setStage()`.
+ *
+ * @param doc Document to scan (defaults to the global `document`)
+ * @returns `{ apiKey, stage }` when found, otherwise `null`
  */
-export function isURL(str: string): string | false {
-  if (str.match(/^https?:\/\//)) {
-    return str;
-  } else if (str.match(/^\//) || str.match(/^\.\.?/)) {
-    try {
-      return new URL(str, location.href).href;
-    } catch (error) {
-      console.error('[Geolonia]', error); // eslint-disable-line
-      return false;
+export function parseScriptTagApiKey(
+  doc: Document = document,
+): { apiKey: string; stage: string } | null {
+  const scripts: HTMLScriptElement[] | HTMLCollectionOf<HTMLScriptElement> =
+    doc.currentScript
+      ? [doc.currentScript as HTMLScriptElement]
+      : doc.getElementsByTagName('script');
+
+  for (const script of scripts) {
+    const src = script.src;
+    if (!src) {
+      continue;
+    }
+    const url = new URL(
+      src.startsWith('https://') ||
+      src.startsWith('http://') ||
+      src.startsWith('//')
+        ? src
+        : `https://${location.host}/${src}`,
+    );
+    const apiKey = url.searchParams.get('geolonia-api-key');
+
+    if (apiKey) {
+      return {
+        apiKey,
+        stage: process.env.MAP_PLATFORM_STAGE || 'dev',
+      };
     }
   }
 
-  return false;
+  return null;
 }
 
-export function isGeoloniaTilesHost(url: string | URL): boolean {
-  try {
-    const urlObj = typeof url === 'string' ? new URL(url) : url;
-
-    return (
-      // NOTE: geolonia use tileserver.geolonia.com or *.tiles.geolonia.com for tile server. Other domains is NOT allowed.
-      urlObj.hostname === 'tileserver.geolonia.com' ||
-      urlObj.hostname.endsWith('.tiles.geolonia.com')
-    );
-  } catch {
-    return false;
-  }
-}
-
+/**
+ * Detect whether the embed is allowed to render in the current (possibly
+ * iframed) context. Embed-specific: not provided by maps-core.
+ */
 export function checkPermission() {
   // It looks that isn't iFrame, so returns true.
   if (window.self === window.parent) {
@@ -117,314 +118,4 @@ export function checkPermission() {
   }
 
   return false;
-}
-
-export function getLang() {
-  const lang =
-    (window.navigator.languages &&
-      window.navigator.languages[0] &&
-      window.navigator.languages[0].toLowerCase()) ||
-    window.navigator.language.toLowerCase();
-
-  if (lang === 'ja' || lang === 'ja-jp') {
-    return 'ja';
-  } else {
-    return 'en';
-  }
-}
-
-/**
- * Detects the window is scrollable.
- */
-export function isScrollable() {
-  const body = document.body;
-  const html = document.documentElement;
-
-  return (
-    body.scrollHeight > body.clientHeight ||
-    html.scrollHeight > html.clientHeight
-  );
-}
-
-/**
- * Detects the object is HTMLElement?
- *
- * @param {*} o
- */
-export function isDomElement(o): o is HTMLElement {
-  return typeof HTMLElement === 'object'
-    ? o instanceof HTMLElement // DOM2
-    : o &&
-        typeof o === 'object' &&
-        o !== null &&
-        o.nodeType === 1 &&
-        typeof o.nodeName === 'string';
-}
-
-/**
- * Gets the HTMLElement for the map.
- * Possibility args are HTMLElement or CSS selector or object that has container property.
- *
- * @param {*} arg
- * @return {HTMLElement | false}
- */
-export function getContainer(
-  arg: HTMLElement | string | { container: HTMLElement | string },
-): HTMLElement | false {
-  if (isDomElement(arg)) {
-    return arg;
-  } else if (typeof arg === 'string') {
-    const el =
-      (document.querySelector(arg) as HTMLElement) ||
-      document.getElementById(arg);
-    return el || false;
-  } else if (arg.container) {
-    if (isDomElement(arg.container)) {
-      return arg.container;
-    } else if (typeof arg.container === 'string') {
-      const el =
-        (document.querySelector(arg.container) as HTMLElement) ||
-        document.getElementById(arg.container);
-      return el || false;
-    }
-  }
-
-  return false;
-}
-
-/**
- * Merge legacyOptions into options for geolonia.Marker class
- *
- * @param {*} options
- * @param {*} legacyOptions
- */
-export function handleMarkerOptions(
-  options: MarkerOptions | null | undefined | false,
-  legacyOptions: MarkerOptions,
-) {
-  if (options && isDomElement(options)) {
-    options = {
-      element: options as HTMLElement,
-      ...legacyOptions,
-    };
-  } else if (!options) {
-    options = legacyOptions;
-  }
-
-  return options;
-}
-
-export function getStyle(style, atts) {
-  // Geolonia スタイルを使う場合は API キー必須
-  if (keyring.isGeoloniaStyleCheck(style) && !atts.key) {
-    throw new Error('[Geolonia] API key is required to use Geolonia styles. Please provide an API key or use an external style URL.');
-  }
-
-  // 空の場合はデフォルト（既存挙動を維持）
-  if (!style || style === '') {
-    if (atts.lang === 'ja') {
-      return 'https://cdn.geolonia.com/style/geolonia/basic-v2/ja.json';
-    } else {
-      return 'https://cdn.geolonia.com/style/geolonia/basic-v2/en.json';
-    }
-  }
-
-  // URL モード: http:// or https:// で始まる、または相対パス（/、./、../）
-  const styleUrl = isURL(style);
-  if (styleUrl) {
-    // Mixed Content の警告
-    if (
-      location.protocol === 'https:' &&
-      styleUrl.startsWith('http:')
-    ) {
-      console.warn( // eslint-disable-line no-console
-        `[Geolonia] Mixed Content Warning: You are loading a style from an insecure HTTP URL (${styleUrl}) on an HTTPS page. This may fail in modern browsers.`,
-      );
-    }
-    return styleUrl;
-  }
-
-  // *.json で終わる場合も URL として扱う（相対パスの可能性）
-  if (style.endsWith('.json')) {
-    try {
-      const absoluteUrl = new URL(style, location.href).href;
-      if (
-        location.protocol === 'https:' &&
-        absoluteUrl.startsWith('http:')
-      ) {
-        console.warn( // eslint-disable-line no-console
-          `[Geolonia] Mixed Content Warning: You are loading a style from an insecure HTTP URL (${absoluteUrl}) on an HTTPS page. This may fail in modern browsers.`,
-        );
-      }
-      return absoluteUrl;
-    } catch (error) {
-      console.error('[Geolonia] Failed to resolve style URL:', style, error); // eslint-disable-line no-console
-      // フォールバック: そのまま返す
-      return style;
-    }
-  }
-
-  // 従来モード: geolonia/basic などの論理名
-  if (atts.lang === 'ja') {
-    return `https://cdn.geolonia.com/style/${style}/ja.json`;
-  } else {
-    return `https://cdn.geolonia.com/style/${style}/en.json`;
-  }
-}
-
-// params are the parameters that have been passed to new geolonia.Map(params)
-// atts are the data-XYZ attributes that are on the container
-export function getOptions(container, params, atts): MapOptions {
-  if (params.container) {
-    delete params.container; // Don't overwrite container.
-  }
-
-  if (params === container) {
-    params = {}; // `params` is HTMLElement, so we shouldn't merge it into options.
-  }
-
-  const options: MapOptions = {
-    style: atts.style || params.style, // Validation for value of `style` will be processed on `setStyle()`.
-    container,
-    center: [parseFloat(atts.lng), parseFloat(atts.lat)],
-    bearing: parseFloat(atts.bearing),
-    pitch: parseFloat(atts.pitch),
-    zoom: parseFloat(atts.zoom),
-    hash: atts.hash === 'on',
-    localIdeographFontFamily: 'sans-serif',
-    attributionControl: false,
-  };
-
-  if (
-    atts.minZoom !== '' &&
-    (Number(atts.minZoom) === 0 || Number(atts.minZoom))
-  ) {
-    options.minZoom = Number(atts.minZoom);
-  }
-
-  if (atts.maxZoom !== '' && Number(atts.maxZoom)) {
-    options.maxZoom = Number(atts.maxZoom);
-  }
-
-  Object.assign(options, params);
-
-  return options;
-}
-
-/**
- *
- * @param {string} an data-*-control Embed attribute
- * @returns { enabled: boolean, position: 'top-right' | 'bottom-right' | 'bottom-left' | 'top-left' | void }
- */
-export function parseControlOption(att) {
-  const normalizedAtt = att.toLowerCase();
-  if (
-    ['top-right', 'bottom-right', 'bottom-left', 'top-left'].includes(
-      normalizedAtt,
-    )
-  ) {
-    return { enabled: true, position: normalizedAtt };
-  } else if (['on', 'off'].includes(normalizedAtt)) {
-    return { enabled: normalizedAtt === 'on', position: void 0 };
-  } else {
-    return { enabled: false, position: void 0 };
-  }
-}
-
-/**
- * keep session
- */
-let sessionId = '';
-
-/**
- *
- * @param {number} digits for session
- * @returns sessionId
- */
-export const getSessionId = (digit) => {
-  if (sessionId) {
-    return sessionId;
-  } else {
-    const array = new Uint8Array(digit / 2);
-    window.crypto.getRandomValues(array);
-    const value = Array.from(array, (dec) =>
-      dec.toString(16).padStart(2, '0'),
-    ).join('');
-    sessionId = value;
-    return value;
-  }
-};
-
-export const parseSimpleVector = (attributeValue) => {
-  if (/^(https?|geolonia):\/\//.test(attributeValue)) {
-    return attributeValue;
-  } else {
-    return `geolonia://tiles/custom/${attributeValue}`;
-  }
-};
-
-export const handleRestrictedMode = (map) => {
-  if (!map._geolonia_restricted_mode_handled) {
-    map._geolonia_restricted_mode_handled = true;
-    const container = map.getContainer();
-    map.remove();
-    container.innerHTML = '';
-    container.classList.add('geolonia__restricted-mode-image-container');
-  }
-};
-
-export const handleErrorMode = (container) => {
-  const errorContainer = document.createElement('div');
-  errorContainer.classList.add('geolonia__error-container');
-
-  const div = document.createElement('div');
-
-  const h1 = document.createElement('h2');
-  h1.textContent = 'Geolonia Maps';
-  div.appendChild(h1);
-
-  div.classList.add('geolonia__error-message');
-  div.innerHTML +=
-    '<div class="geolonia__error-message-description">地図の初期化に失敗しました。管理者にお問い合わせ下さい。開発者の方は開発者ツールでエラー詳細をご確認下さい。</div>';
-
-  errorContainer.appendChild(div);
-  container.appendChild(errorContainer);
-};
-
-export const sanitizeDescription = async (description) => {
-  const { default: sanitizeHtml } = await import('sanitize-html');
-  return sanitizeHtml(description, {
-    allowedTags: sanitizeHtml.defaults.allowedTags.concat(['img']),
-    allowedAttributes: {
-      ...sanitizeHtml.defaults.allowedAttributes,
-      '*': ['class'],
-    },
-  });
-};
-
-export const random = (max: number): number => Math.floor(Math.random() * max);
-
-// This function is used to provide backward compatibility with callback invocations,
-// so we ignore ESLint rules for this function.
-// Note: this cannot be a generic promiseToCallback function because the callback is not
-// the traditional (error, result) style callback.
-export function loadImageCompatibility(
-  promise: Promise<GetResourceResponse<HTMLImageElement | ImageBitmap>>,
-  callback: GetImageCallback,
-): void {
-  promise
-    // eslint-disable-next-line promise/prefer-await-to-then
-    .then((response) => {
-      // eslint-disable-next-line promise/no-callback-in-promise
-      callback(null, response.data, {
-        cacheControl: response.cacheControl,
-        expires: response.expires,
-      });
-      return;
-    })
-    // eslint-disable-next-line promise/prefer-await-to-then
-    .catch((error) => {
-      // eslint-disable-next-line promise/no-callback-in-promise
-      callback(error);
-    });
 }

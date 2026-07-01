@@ -28,11 +28,14 @@ test.describe('MutationObserver cleanup (wrapper-only)', () => {
     expect(await page.evaluate(() => (window as any).__removeFired)).toBe(true);
   });
 
+  // maps-core 版 GeoloniaMap は options オブジェクトのみ受け取る (破壊的変更:
+  // 要素/セレクタ文字列は非対応)。同一コンテナへの再初期化は
+  // `container.geoloniaMap` を返して二重初期化を防ぐ。
   test('同じコンテナへ再度 new すると同一インスタンスが返る (二重初期化防止)', async ({ page }) => {
     const sameInstance = await page.evaluate(() => {
       const container = document.querySelector('#map') as any;
       const a = container.geoloniaMap;
-      const b = new (window as any).geolonia.Map(container);
+      const b = new (window as any).geolonia.Map({ container });
       return a === b;
     });
     expect(sameInstance).toBe(true);

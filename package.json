@@ -1,6 +1,6 @@
 {
   "name": "@geolonia/embed",
-  "version": "5.2.2",
+  "version": "6.0.0-pre.0",
   "description": "Geolonia embed JS API",
   "main": "dist/embed.js",
   "types": "dist/src/embed.d.ts",
@@ -66,14 +66,8 @@
     "webpack-dev-server": "^4.11.1"
   },
   "dependencies": {
-    "@geolonia/mbgl-gesture-handling": "^1.0.15",
-    "@mapbox/geojson-extent": "^1.0.0",
-    "@mapbox/point-geometry": "^0.1.0",
-    "@playwright/test": "^1.53.1",
-    "@turf/center": "^6.0.1",
-    "maplibre-gl": "5.19.0",
-    "pmtiles": "^3.0.6",
-    "sanitize-html": "^2.8.0",
-    "tinycolor2": "^1.4.1"
+    "@geolonia/maps-core": "^0.4.1",
+    "@playwright/test": "^1.61.1",
+    "maplibre-gl": "5.19.0"
   }
 }

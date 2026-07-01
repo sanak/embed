@@ -1,4 +1,4 @@
-import type GeoloniaMap from './lib/geolonia-map';
+import type { GeoloniaMap } from '@geolonia/maps-core';
 
 export type EmbedAttributes = {
   lat: string | number;
