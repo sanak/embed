@@ -158,6 +158,17 @@ describe('attsToOptions', () => {
     expect(options.minZoom).toBe(3);
     expect(options.maxZoom).toBe(18);
   });
+
+  it('honours data-max-zoom="0" (0 is a valid bound, not falsy)', () => {
+    const container = document.createElement('div');
+    container.dataset.minZoom = '0';
+    container.dataset.maxZoom = '0';
+
+    const options = attsToOptions(container, parseAtts(container));
+
+    expect(options.minZoom).toBe(0);
+    expect(options.maxZoom).toBe(0);
+  });
 });
 
 // data-lang の言語解決 (embed#462 / maps-core#50)。

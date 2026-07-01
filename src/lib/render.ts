@@ -30,6 +30,19 @@ export const renderGeoloniaMap = () => {
     keyring.setStage(parsed.stage);
   }
 
+  // Backward compat: maps-core's keyring no longer scans the DOM, but legacy
+  // embeds set the key only on the container via `data-key`. Seed the keyring
+  // from the first container-side key so the iframe permission check below
+  // (and Geolonia-style validation) sees the same effective key as before.
+  // Per-container `data-key` still flows through parseAtts → attsToOptions.
+  if (!keyring.apiKey) {
+    const keyed = document.querySelector<HTMLElement>('.geolonia[data-key]');
+    const dataKey = keyed?.dataset.key;
+    if (dataKey) {
+      keyring.setApiKey(dataKey);
+    }
+  }
+
   if (checkPermission()) {
     let isDOMContentLoaded = false;
     const alreadyRenderedMaps = [];

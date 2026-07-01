@@ -202,7 +202,10 @@ export const attsToOptions = (
   ) {
     options.minZoom = Number(atts.minZoom);
   }
-  if (atts.maxZoom !== '' && Number(atts.maxZoom)) {
+  if (
+    atts.maxZoom !== '' &&
+    (Number(atts.maxZoom) === 0 || Number(atts.maxZoom))
+  ) {
     options.maxZoom = Number(atts.maxZoom);
   }
 

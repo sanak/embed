@@ -26,13 +26,9 @@ export function parseScriptTagApiKey(
     if (!src) {
       continue;
     }
-    const url = new URL(
-      src.startsWith('https://') ||
-      src.startsWith('http://') ||
-      src.startsWith('//')
-        ? src
-        : `https://${location.host}/${src}`,
-    );
+    // Resolve against a base URI so protocol-relative (`//cdn/...`) and
+    // relative script srcs don't throw `TypeError: Invalid URL`.
+    const url = new URL(src, doc.baseURI || window.location.href);
     const apiKey = url.searchParams.get('geolonia-api-key');
 
     if (apiKey) {
