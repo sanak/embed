@@ -51,7 +51,7 @@ npm install @geolonia/embed
 ```typescript
 import { GeoloniaMap, keyring } from "@geolonia/embed/core";
 
-keyring.apiKey = "YOUR-API-KEY";
+keyring.setApiKey("YOUR-API-KEY");
 
 const map = new GeoloniaMap({
   container: "#map",
@@ -107,6 +107,29 @@ The `data-style` attribute accepts:
 - **Full URLs**: `https://example.com/style.json`
 - **Relative paths**: `./custom-style.json`, `/styles/my-style.json`
 - **Files ending in .json**: Automatically resolved to absolute URLs
+
+#### data-lang attribute
+
+The `data-lang` attribute controls the language of map labels:
+
+- `ja` — Japanese labels
+- `en` (or any other non-Japanese value) — English labels
+- `auto` — follow the browser language (`navigator.languages`)
+- **omitted** — same as `auto` (follows the browser language)
+
+Only `ja` / `ja-jp` resolve to Japanese; every other value resolves to English.
+
+**Important:** when neither `data-lang` nor `lang` is specified, the language follows the browser setting. On a non-Japanese browser this loads the English style (`en.json`). Set it explicitly to force a language:
+
+```html
+<div class="geolonia" data-lang="ja" ...></div>
+```
+
+When using the JavaScript API (`new GeoloniaMap({...})`), pass `lang` in the options instead of a `data-lang` attribute:
+
+```ts
+const map = new GeoloniaMap({ container: "#map", lang: "ja" });
+```
 
 You can see more examples at [https://geolonia.github.io/embed/](https://geolonia.github.io/embed/).
 

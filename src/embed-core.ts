@@ -1,22 +1,20 @@
 /**
  * @file Side-effect-free entry point for programmatic use (e.g. React wrapper).
  * Does NOT call renderGeoloniaMap() or set window.geolonia.
- * Only registers the PMTiles protocol, which is required for all users.
+ *
+ * The Geolonia core (map, marker, simplestyle, keyring, PMTiles protocol
+ * registration, ...) now lives in `@geolonia/maps-core`; this entry simply
+ * re-exports it alongside embed-specific helpers (registerPlugin, version).
  */
 
-import maplibregl from 'maplibre-gl';
-import { Protocol } from 'pmtiles';
-
-// PMTiles protocol registration (required side effect)
-const protocol = new Protocol();
-maplibregl.addProtocol('pmtiles', protocol.tile);
-
-export { default as GeoloniaMap } from './lib/geolonia-map';
-export { default as GeoloniaMarker } from './lib/geolonia-marker';
-export { SimpleStyle } from './lib/simplestyle';
-export { default as SimpleStyleVector } from './lib/simplestyle-vector';
-export { keyring } from './lib/keyring';
+export {
+  GeoloniaMap,
+  GeoloniaMarker,
+  SimpleStyle,
+  SimpleStyleVector,
+  keyring,
+} from '@geolonia/maps-core';
 export { registerPlugin } from './lib/render';
 export { VERSION as embedVersion } from './version';
 export type { EmbedAttributes, EmbedPlugin } from './types';
-export type { GeoloniaMapOptions } from './lib/geolonia-map';
+export type { GeoloniaMapOptions } from '@geolonia/maps-core';

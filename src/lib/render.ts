@@ -1,31 +1,70 @@
-import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import '../style.css';
-import GeoloniaMap from './geolonia-map';
-import { checkPermission } from './util';
-import parseAtts from './parse-atts';
-import { keyring } from './keyring';
-import { Protocol } from 'pmtiles';
+import { GeoloniaMap, keyring } from '@geolonia/maps-core';
+import { checkPermission, parseScriptTagApiKey } from './util';
+import parseAtts, { attsToOptions } from './parse-atts';
 
 const plugins = [];
 
+/**
+ * Move any inline HTML the author placed inside the map container into
+ * `data-popup-content`, which is where maps-core reads the marker popup body
+ * from. The container itself is emptied so the leftover markup doesn't render
+ * behind the map. (Old embed read `container.innerHTML` directly; maps-core
+ * takes options only.)
+ */
+const extractPopupContent = (target: HTMLElement) => {
+  const content = target.innerHTML.trim();
+  if (content) {
+    target.dataset.popupContent = content;
+  }
+  target.innerHTML = '';
+};
+
 export const renderGeoloniaMap = () => {
-  const protocol = new Protocol();
-  maplibregl.addProtocol('pmtiles', protocol.tile);
+  // maps-core's keyring no longer scans the DOM, so parse the embed script
+  // tag here (`?geolonia-api-key=`) and push the key/stage into the keyring.
+  const parsed = parseScriptTagApiKey();
+  if (parsed) {
+    keyring.setApiKey(parsed.apiKey);
+    keyring.setStage(parsed.stage);
+  }
+
+  // Backward compat: maps-core's keyring no longer scans the DOM, but legacy
+  // embeds set the key only on the container via `data-key`. Seed the keyring
+  // from the first container-side key so the iframe permission check below
+  // (and Geolonia-style validation) sees the same effective key as before.
+  // Per-container `data-key` still flows through parseAtts → attsToOptions.
+  if (!keyring.apiKey) {
+    const keyed = document.querySelector<HTMLElement>('.geolonia[data-key]');
+    const dataKey = keyed?.dataset.key;
+    if (dataKey) {
+      keyring.setApiKey(dataKey);
+    }
+  }
 
   if (checkPermission()) {
     let isDOMContentLoaded = false;
     const alreadyRenderedMaps = [];
     const isRemoved = Symbol('map-is-removed');
 
-    keyring.parse();
-
     /**
      *
      * @param {HTMLElement} target
      */
     const renderSingleMap = (target) => {
-      const map = new GeoloniaMap(target);
+      const atts = parseAtts(target);
+
+      // Dedup: if this container was already initialised (e.g. constructed
+      // programmatically before the lazy observer fired), reuse the instance.
+      // Must happen before extractPopupContent(), otherwise we'd wipe the
+      // already-rendered map DOM out of the container.
+      let map = target.geoloniaMap;
+      if (!map) {
+        // Grab inline popup content before maps-core clears/renders the container.
+        extractPopupContent(target);
+        map = new GeoloniaMap(attsToOptions(target, atts));
+      }
 
       // detect if the map removed manually
       map.on('remove', () => {
@@ -45,7 +84,6 @@ export const renderGeoloniaMap = () => {
       observer.observe(target.parentNode, { childList: true });
 
       // plugin
-      const atts = parseAtts(target);
       if (isDOMContentLoaded && !map[isRemoved]) {
         plugins.forEach((plugin) => plugin(map, target, atts));
       } else {
